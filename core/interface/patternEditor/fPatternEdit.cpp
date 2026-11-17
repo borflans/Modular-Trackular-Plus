@@ -25,6 +25,7 @@
 #include "mods.h"               // MT:
 #include "modsPatternButtons.h" // MT:
 #include "tracklen.h"           // MT:
+#include "pnemOptions.h"        // PNEM
 
 strTrackerPattern cPatternEditor::trackerPattern;
 cPatternEditor::strFill cPatternEditor::fillData[6];
@@ -340,6 +341,19 @@ void cPatternEditor::start(uint32_t options)
 
     moduleRefresh = 1;
     patternButtonReleaseActive = 0;
+
+    // PNEM: Set 8-track view once after startup
+    if (!pnemViewDefaultSet)
+    {
+        pnemViewDefaultSet = true;
+
+        if (pnem::option(pnem::kEightTrackView))
+        {
+            patternViewMode = kPnemEightTrackColumns;
+            focusOnActual();
+            display.setControlValue(patternControl, patternViewMode);
+        }
+    }
 
     undoRedoButtonReleaseBlocker = 1;
 
@@ -2930,7 +2944,16 @@ static void functPattern(uint8_t state)
     }
     else if (state == buttonRelease && PTE->patternButtonReleaseActive)
     {
-        PTE->setPatternViewMode(0);
+        // PNEM: Toggle 8-track and 4-track views on a plain Pattern tap
+        if (pnem::option(pnem::kEightTrackView) &&
+            PTE->patternViewChanged == 0)
+        {
+            PTE->pnemTogglePatternView();
+        }
+        else
+        {
+            PTE->setPatternViewMode(0);
+        }
         if (sequencer.sequencialSwitch_GetNext() > 0)
         {
             sequencer.sequencialSwitch_SetReady();
@@ -5254,6 +5277,21 @@ void cPatternEditor::setPatternViewMode(uint8_t param)
     PTE->focusOnActual();
     display.setControlValue(PTE->patternControl, PTE->patternViewMode);
     display.refreshControl(PTE->patternControl);
+}
+
+// PNEM: Toggle between 8-track and 4-track views
+void cPatternEditor::pnemTogglePatternView()
+{
+    patternViewMode =
+        (patternViewMode == 0) ? kPnemEightTrackColumns : 0;
+
+    selectedParams[0] = 0;
+    selectedParams[1] = 0;
+
+    focusOnActual();
+
+    display.setControlValue(patternControl, patternViewMode);
+    display.refreshControl(patternControl);
 }
 
 void cPatternEditor::changePatternViewMode(uint8_t param)

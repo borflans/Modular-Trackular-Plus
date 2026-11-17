@@ -5,6 +5,7 @@
 #include "core/interface.h"
 #include "display.h"
 #include "ThemeManager.h"
+#include "pnemOptions.h"
 
 #include "mtStructs.h"
 
@@ -477,6 +478,9 @@ void checkConfig()
     // TODO dodac zapis spowrotem do configu jesli np przy sprawdzaniu wazne dane sie nie zgadzały
     // TODO
     // TODO
+
+    // Load PNEM options from saved configuration
+    pnem::optionsFromConfig();
 }
 
 void resetConfig()
@@ -558,6 +562,8 @@ void resetConfig()
     mtConfig.general.lineInOutType = 0;
     mtConfig.general.previewVolume = PREVIEW_VOLUME_DEFAULT;
     mtConfig.general.recThreshold = recThreshold_default;
+    mtConfig.general.pnemOptionsOff = 0; // PNEM
+    pnem::optionsFromConfig(); // PNEM
 
     // interface ----------------------------------------
     mtConfig.interface.fxPopupDescription = 0;

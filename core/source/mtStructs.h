@@ -1125,7 +1125,14 @@ struct strMtConfig
         uint8_t font;
         uint8_t previewVolume;
         uint8_t recThreshold;
+
+        // PNEM: configuration options stored in the former padding byte
+        uint8_t pnemOptionsOff;
+
     } general;
+
+    static_assert(sizeof(strGeneralValues) == 18,
+                  "PNEM options must not change the config structure size");
 
     struct strInterfaceState
     {

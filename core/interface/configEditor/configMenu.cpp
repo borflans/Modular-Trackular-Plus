@@ -12,6 +12,7 @@
 #include "masterfx.h" // MT:
 #include "mods.h"     // MT:
 #include "swing.h"    // MT:
+#include "pnemOptions.h" // PNEM
 
 #include <array>
 
@@ -25,15 +26,15 @@
 #ifdef TRACKER_MINI
 constexpr uint8_t baseMenuGroupCount = 8;
 constexpr uint8_t projectMenuGroupCount = 10;
-constexpr uint8_t generalMenuGroupCount = 9;
+constexpr uint8_t generalMenuGroupCount = 12;
 #elif defined(PLATFORM_IMX)
 constexpr uint8_t baseMenuGroupCount = 7 + MT_MODS; // MT: + Mods
 constexpr uint8_t projectMenuGroupCount = 10 + MT_MODS + MT_HAS_SWING + MT_HAS_HUMANIZE + MT_HAS_MASTERFX; // MT: + Mods, Global Swing, Humanize, Master FX
-constexpr uint8_t generalMenuGroupCount = 12;
+constexpr uint8_t generalMenuGroupCount = 15;
 #else
 constexpr uint8_t baseMenuGroupCount = 6;
 constexpr uint8_t projectMenuGroupCount = 10;
-constexpr uint8_t generalMenuGroupCount = 12;
+constexpr uint8_t generalMenuGroupCount = 15;
 #endif
 
 // baza baz
@@ -319,6 +320,64 @@ cMenuItem melLinInOutType(menuGeneral,
                           lineInChannelDesc,
                           menuTypeItemListTextWithAction,
                           &setupLineInOutType);
+
+// PNEM: Pattern editor options
+
+const char pnemEightTrackViewDesc[] =
+    "On: Pattern opens with 8 tracks (Note and Instr). "
+    "Tap Pattern to switch between 8 and 4 tracks.";
+
+const char pnemTrackWrapDesc[] =
+    "On: Left on track 1 wraps to track 16, "
+    "and Right on track 16 wraps to track 1.";
+
+const char pnemAlignMuteKeysDesc[] =
+    "On: Shift + softkeys mute the tracks currently on screen.";
+
+const strItemTypeListTextWithAction setupPnemEightTrackView{
+    &pnem::optionMenuValue[pnem::kEightTrackView],
+    2,
+    onOffStateTexts,
+    pnem::optionChanged
+};
+
+const strItemTypeListTextWithAction setupPnemTrackWrap{
+    &pnem::optionMenuValue[pnem::kTrackWrap],
+    2,
+    onOffStateTexts,
+    pnem::optionChanged
+};
+
+const strItemTypeListTextWithAction setupPnemAlignMuteKeys{
+    &pnem::optionMenuValue[pnem::kAlignMuteKeys],
+    2,
+    onOffStateTexts,
+    pnem::optionChanged
+};
+
+cMenuItem melPnemEightTrackView(
+    menuGeneral,
+    "8 track view",
+    pnemEightTrackViewDesc,
+    menuTypeItemListTextWithAction,
+    &setupPnemEightTrackView
+);
+
+cMenuItem melPnemTrackWrap(
+    menuGeneral,
+    "Track wrap",
+    pnemTrackWrapDesc,
+    menuTypeItemListTextWithAction,
+    &setupPnemTrackWrap
+);
+
+cMenuItem melPnemAlignMuteKeys(
+    menuGeneral,
+    "Align mute keys",
+    pnemAlignMuteKeysDesc,
+    menuTypeItemListTextWithAction,
+    &setupPnemAlignMuteKeys
+);
 
 //==================================================================================================================================================================
 // Metroneome

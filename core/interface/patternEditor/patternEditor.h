@@ -347,6 +347,11 @@ class cPatternEditor : public ModuleBase
     void setPatternViewMode(uint8_t param);
     void changePatternViewMode(uint8_t param);
 
+    // PNEM: 8 track view
+    static constexpr uint8_t kPnemEightTrackColumns = 0b0011;
+    bool pnemViewDefaultSet = false;
+    void pnemTogglePatternView();
+
     //--------------------------------------------------------
     // powiekszona funkcjolanosc przyciskow pod ekranem - 2 strony
     const uint8_t actionButtonsPagesCount = 3;
