@@ -23,7 +23,7 @@ CPP_SRCS 	+= $(shell find ./AudioEngine/ -name *.cpp)
 CPP_SRCS 	+= $(shell find ./synth/ -name *.cpp)
 # MT: Modular-Trackular mods (host tests in mods/tests/ are not firmware, and nor are WAVE and
 # PHASE in mods/synths/psyn/: they are .psyn plugins, built by the root Makefile's psyn target)
-CPP_SRCS 	+= $(shell find ./mods/ -name *.cpp -not -path "./mods/tests/*" -not -path "./mods/synths/psyn/*")
+CPP_SRCS 	+= $(shell find ./mods -name '*.cpp' -not -path "./mods/tests/*" -not -path "./mods/synths/psyn/*")
 C_SRCS 	 	+= $(shell find ./libs/ -name *.c)
 
 _CPP_OBJS	= $(patsubst ./%.cpp, %.o, $(CPP_SRCS))
