@@ -4566,7 +4566,7 @@ void cPatternEditor::lightUpPadBoard()
         bool patternMode = (mtConfig.general.padPreviewInPatternEdit == padPreviewModePattern);
 
         for (int track = patternMode ? 0 : trackerPattern.actualTrack;
-             track < (patternMode ? Sequencer::TRACKS : trackerPattern.actualTrack + 1);
+             track < (patternMode ? kAllTracks : trackerPattern.actualTrack + 1);
              track++)
         {
             int8_t show_note = seq->track[track].step[trackerPattern.actualStep].note;
