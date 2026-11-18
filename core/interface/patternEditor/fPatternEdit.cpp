@@ -2409,6 +2409,11 @@ void cPatternEditor::previousTrack()
 {
     uint8_t shiftPressed = buttons->isButtonPressed(interfaceButtonShift);
 
+    if (!shiftPressed && pnemWrapTrack(false)) // PNEM: Track wrap
+    {
+        return;
+    }
+
     if (PTE->editMode || sequencer.isStop())
     {
         if (shiftPressed &&
@@ -2478,6 +2483,11 @@ void cPatternEditor::nextTrack()
 {
 
     uint8_t shiftPressed = buttons->isButtonPressed(interfaceButtonShift);
+
+    if (!shiftPressed && pnemWrapTrack(true)) // PNEM: Track wrap
+    {
+        return;
+    }
 
     if (PTE->editMode || sequencer.isStop())
     {
@@ -5277,6 +5287,32 @@ void cPatternEditor::setPatternViewMode(uint8_t param)
     PTE->focusOnActual();
     display.setControlValue(PTE->patternControl, PTE->patternViewMode);
     display.refreshControl(PTE->patternControl);
+}
+
+// PNEM: Track wrap: Left on the first track goes to the last,
+// Right on the last goes to the first. The view follows.
+bool cPatternEditor::pnemWrapTrack(bool right)
+{
+    const int edge = right ? kAllTracks - 1 : 0;
+    if (!pnem::option(pnem::kTrackWrap) || trackerPattern.actualTrack != edge)
+    {
+        return false;
+    }
+
+    trackerPattern.actualTrack = right ? 0 : kAllTracks - 1;
+    focusOnActual();
+
+    if (editMode || sequencer.isStop())
+    {
+        trackerPattern.selectState = 1;
+        trackerPattern.selectColumn = 0;
+        isSelectingNow = 0;
+    }
+
+    showFxInfo();
+    lightUpPadBoard();
+    display.refreshControl(patternControl);
+    return true;
 }
 
 // PNEM: Toggle between 8-track and 4-track views

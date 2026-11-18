@@ -352,6 +352,9 @@ class cPatternEditor : public ModuleBase
     bool pnemViewDefaultSet = false;
     void pnemTogglePatternView();
 
+    // PNEM: Track wrap
+    bool pnemWrapTrack(bool right);
+
     //--------------------------------------------------------
     // powiekszona funkcjolanosc przyciskow pod ekranem - 2 strony
     const uint8_t actionButtonsPagesCount = 3;
