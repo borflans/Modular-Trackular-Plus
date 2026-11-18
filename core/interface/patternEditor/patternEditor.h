@@ -355,6 +355,9 @@ class cPatternEditor : public ModuleBase
     // PNEM: Track wrap
     bool pnemWrapTrack(bool right);
 
+    // PNEM: Align mute keys
+    int pnemSoftkeyTrack(uint8_t button, bool midiTracks);
+
     //--------------------------------------------------------
     // powiekszona funkcjolanosc przyciskow pod ekranem - 2 strony
     const uint8_t actionButtonsPagesCount = 3;

@@ -1482,21 +1482,34 @@ static void functMuteTrack(uint8_t button, uint8_t state)
     if (state == buttonPress)
     {
         bool midiTrack = !isSampleTrack(PTE->trackerPattern.actualTrack);
-        int trackIdx = midiTrack ? button + 8 : button;
+        //int trackIdx = midiTrack ? button + 8 : button;
+        int trackIdx = PTE->pnemSoftkeyTrack(button, midiTrack); // PNEM
 
         if (trackIdx >= kAllTracks)
         {
             return;
         }
 
-        auto& mute =
-          midiTrack ? mtProject.values.midiTrackMute[button] : mtProject.values.trackMute[button];
+        //auto& mute =
+        //  midiTrack ? mtProject.values.midiTrackMute[button] : mtProject.values.trackMute[button];
+
+        // PNEM
+        const bool sampleTrack = trackIdx < kSampleTracks;
+        auto& mute = sampleTrack ? mtProject.values.trackMute[trackIdx]
+                                 : mtProject.values.midiTrackMute[trackIdx - kSampleTracks];
 
         mute = !mute;
-        if (!midiTrack)
+        //if (!midiTrack)
+        //{
+        //    engine.muteTrack(button, mtProject.values.trackMute[button]);
+        //}
+
+        // PNEM
+        if (sampleTrack)
         {
-            engine.muteTrack(button, mtProject.values.trackMute[button]);
+            engine.muteTrack(trackIdx, mtProject.values.trackMute[trackIdx]);
         }
+
         PTE->trackerPattern.inactive[trackIdx] = mute;
 
         display.refreshControl(PTE->patternControl);
@@ -1512,7 +1525,8 @@ static void functRecArmTrack(uint8_t button, uint8_t state)
     if (state == buttonPress)
     {
         bool midiTrack = !isSampleTrack(PTE->trackerPattern.actualTrack);
-        int trackIdx = midiTrack ? button + 8 : button;
+        //int trackIdx = midiTrack ? button + 8 : button;
+        int trackIdx = PTE->pnemSoftkeyTrack(button, midiTrack); // PNEM
 
         if (trackIdx >= kAllTracks)
         {
@@ -5313,6 +5327,26 @@ bool cPatternEditor::pnemWrapTrack(bool right)
     lightUpPadBoard();
     display.refreshControl(patternControl);
     return true;
+}
+
+// PNEM: Align mute keys
+// Map softkeys to the tracks currently shown in the Pattern view.
+int cPatternEditor::pnemSoftkeyTrack(uint8_t button, bool midiTracks)
+{
+    if (!pnem::option(pnem::kAlignMuteKeys))
+    {
+        return midiTracks ? button + kSampleTracks : button;
+    }
+
+    const int visible = patternViewMode > 0 ? 8 : 4;
+    int first = trackerPattern.firstVisibleTrack + visible - 8;
+
+    if (first < 0)
+    {
+        first = 0;
+    }
+
+    return first + button;
 }
 
 // PNEM: Toggle between 8-track and 4-track views
