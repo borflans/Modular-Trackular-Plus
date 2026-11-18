@@ -382,7 +382,8 @@ AUDIO_CORE_RAM void Sequencer::play_microStep(int row)
     if (playerRow.uStep == 1 && player.isPlay && row == 0)
     {
 
-        bool isLastStepInPattern = playerRow.actual_pos == patternRow.length;
+        //bool isLastStepInPattern = playerRow.actual_pos == patternRow.length;
+        bool isLastStepInPattern = playerRow.actual_pos_absolute == patternRow.length; // BIRDLABS
         bool isLastStepInSelectionMode =
           player.selectionModeLooped && playerRow.actual_pos == player.selectionModeLastStep;
 
@@ -395,7 +396,8 @@ AUDIO_CORE_RAM void Sequencer::play_microStep(int row)
                 player.sequencialSwitch_loaded = true;
             }
         }
-        else if (((playerRow.actual_pos == patternRow.length)) && player.songMode)
+        //else if (((playerRow.actual_pos == patternRow.length)) && player.songMode)
+        else if ((playerRow.actual_pos_absolute == patternRow.length) && player.songMode) // BIRDLABS
         {
             loadNextPattern(newFileManager.getNextSongPattern());
         }
