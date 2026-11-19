@@ -2580,6 +2580,7 @@ AUDIO_CORE_RAM void Sequencer::sendMidiChordOn(uint8_t track,
                          -kMaxMidiVelocity,
                          kMaxMidiVelocity);
             velocity = clamp(velocity + deltaPerformanceVelocityFx, 0, kMaxMidiVelocity);
+            velocity = applyMidiTrackLevel(track, velocity); // PNEM: MIDI Mixer
 
             sendMidiNoteOn(noteToSend,
                            velocity,
@@ -2655,6 +2656,7 @@ AUDIO_CORE_RAM void Sequencer::sendNoteOn(uint8_t track,
                          kMaxMidiVelocity);
 
             velocity = clamp(velocity + deltaPerformanceVelocityFx, 0, kMaxMidiVelocity);
+            velocity = applyMidiTrackLevel(track, velocity); // PNEM: MIDI Mixer
 
             sendMidiNoteOn(
               step->note, velocity, instrumentIdxToMidiChannel(step->instrument), toSynth);
@@ -4052,4 +4054,34 @@ int instrumentIdxToSynthIdx(int instrumentIdx)
 {
     assert(isSynthInstrument(instrumentIdx));
     return instrumentIdxToMidiChannel(instrumentIdx) - 1;
+}
+
+// PNEM: MIDI Mixer: velocity x level / 127 (at least 1) on tracks 9-16,
+// and the track's meter.
+AUDIO_CORE_RAM int Sequencer::applyMidiTrackLevel(uint8_t track, int velocity)
+{
+    if (track < kSampleTracks || track >= kAllTracks)
+    {
+        return velocity;
+    }
+
+    const uint8_t idx = track - kSampleTracks;
+    const uint8_t level = midiTrackLevel[idx];
+
+    if (level < kMaxMidiVelocity && velocity > 0)
+    {
+        velocity = velocity * level / kMaxMidiVelocity;
+
+        if (velocity < 1)
+        {
+            velocity = 1;
+        }
+    }
+
+    if (velocity > midiMeterPeak[idx])
+    {
+        midiMeterPeak[idx] = (uint8_t)velocity;
+    }
+
+    return velocity;
 }

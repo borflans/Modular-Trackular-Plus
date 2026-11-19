@@ -82,6 +82,8 @@ static void functSwitchModeMaster(uint8_t state);
 // mixer
 static void functSoloMute(uint8_t state);
 static void functSoloMuteTrack(uint8_t n, uint8_t state);
+static void functSoloMuteMidiTrack(uint8_t n, uint8_t state); // PNEM: MIDI Mixer
+static void functSoloMuteMidi(uint8_t state);                 // PNEM: MIDI Mixer
 // mixer delay reverb
 static void functSoloMuteDelay(uint8_t state);
 static void functSoloMuteReverb(uint8_t state);
@@ -260,6 +262,11 @@ void cMasterParams::update()
         display.synchronizeRefresh();
     }
 
+    if (displayType == displayMode::midiMixer && !keyboardManager.getState()) // PNEM: MIDI Mixer
+    {
+        updateMidiMeters();
+    }
+
     if (displayType == displayMode::mixer && !keyboardManager.getState())
     {
         refreshAllTracksMixerVolume();
@@ -325,6 +332,10 @@ void cMasterParams::start(uint32_t options)
     {
         switchToMixer();
     }
+    else if (displayType == displayMode::midiMixer) // PNEM: MIDI Mixer
+    {
+        switchToMidiMixer();
+    }
     else if (displayType == displayMode::masterValues)
     {
         if (isDelayScreen)
@@ -372,8 +383,9 @@ void cMasterParams::hideControlsUnderMiniMenu()
 
 uint8_t cMasterParams::getCurrentModeIdx()
 {
-    return displayType == displayMode::masterValues ? 0
-                                                    : (displayType == displayMode::mixer ? 1 : 2);
+    return displayType == displayMode::masterValues
+             ? 0
+             : ((displayType == displayMode::mixer || displayType == displayMode::midiMixer) ? 1 : 2);
 }
 
 void cMasterParams::setMasterScreenFunct()
@@ -483,6 +495,19 @@ static void functEncoder(int16_t value)
         return;
     }
 #endif
+
+    if (MP->displayType == cMasterParams::displayMode::midiMixer) // PNEM: MIDI Mixer
+    {
+        for (uint8_t track = 0; track < 8; track++)
+        {
+            if (MP->midiTrackIsEdited[track])
+            {
+                MP->changeMidiTrackLevel(value, track);
+                MP->ignoreMuteReleaseMidi[track] = true;
+            }
+        }
+        return;
+    }
 
     if (MP->displayType == cMasterParams::displayMode::mixer)
     {
@@ -629,7 +654,8 @@ static void functEncoder(int16_t value)
 
 static void functLeft()
 {
-    if (MP->displayType == cMasterParams::displayMode::mixer)
+    if (MP->displayType == cMasterParams::displayMode::mixer ||
+        MP->displayType == cMasterParams::displayMode::midiMixer) // PNEM: MIDI Mixer
     {
         return;
     }
@@ -706,7 +732,8 @@ static void functLeft()
 
 static void functRight()
 {
-    if (MP->displayType == cMasterParams::displayMode::mixer)
+    if (MP->displayType == cMasterParams::displayMode::mixer ||
+        MP->displayType == cMasterParams::displayMode::midiMixer) // PNEM: MIDI Mixer
     {
         return;
     }
@@ -783,6 +810,19 @@ static void functRight()
 
 static void functUp()
 {
+    if (MP->displayType == cMasterParams::displayMode::midiMixer) // PNEM: MIDI Mixer
+    {
+        for (uint8_t track = 0; track < 8; track++)
+        {
+            if (MP->midiTrackIsEdited[track])
+            {
+                MP->changeMidiTrackLevel(1, track);
+                MP->ignoreMuteReleaseMidi[track] = true;
+            }
+        }
+        return;
+    }
+
     if (MP->displayType == cMasterParams::displayMode::mixer)
     {
         for (uint8_t track = 0; track < 8; track++)
@@ -925,6 +965,19 @@ static void functUp()
 
 static void functDown()
 {
+    if (MP->displayType == cMasterParams::displayMode::midiMixer) // PNEM: MIDI Mixer
+    {
+        for (uint8_t track = 0; track < 8; track++)
+        {
+            if (MP->midiTrackIsEdited[track])
+            {
+                MP->changeMidiTrackLevel(-1, track);
+                MP->ignoreMuteReleaseMidi[track] = true;
+            }
+        }
+        return;
+    }
+
     if (MP->displayType == cMasterParams::displayMode::mixer)
     {
         for (uint8_t track = 0; track < 8; track++)
@@ -1066,6 +1119,19 @@ static void functDown()
 
 static void functDelete()
 {
+    if (MP->displayType == cMasterParams::displayMode::midiMixer) // PNEM: MIDI Mixer
+    {
+        for (uint8_t track = 0; track < 8; track++)
+        {
+            if (MP->midiTrackIsEdited[track])
+            {
+                MP->setDefaultMidiTrackLevel(track);
+                MP->ignoreMuteReleaseMidi[track] = true;
+            }
+        }
+        return;
+    }
+
     if (MP->displayType == cMasterParams::displayMode::mixer)
     {
         for (uint8_t track = 0; track < 8; track++)
@@ -1321,6 +1387,13 @@ void cMasterParams::switchScreen()
 {
     selectedPlace = 0;
 
+    // PNEM: MIDI Mixer: Shift + Master goes back
+    if (buttons->isButtonPressed(interfaceButtonShift))
+    {
+        switchScreenBack();
+        return;
+    }
+
     if (displayType == displayMode::masterValues)
     {
         switchToMixer();
@@ -1340,7 +1413,41 @@ void cMasterParams::switchScreen()
     }
     else if (displayType == cMasterParams::displayMode::mixer)
     {
+        switchToMidiMixer(); // PNEM: MIDI Mixer: 2/4 -> 3/4
+    }
+    else if (displayType == cMasterParams::displayMode::midiMixer)
+    {
         switchToMixerDelayReverb();
+    }
+}
+
+// PNEM: MIDI Mixer: Shift + Master: 1/4 -> 4/4 -> 3/4 -> 2/4 -> 1/4 (1/4 on the sub-page it was on)
+void cMasterParams::switchScreenBack()
+{
+    if (displayType == displayMode::masterValues)
+    {
+        switchToMixerDelayReverb();
+    }
+    else if (displayType == displayMode::mixerDelayReverb)
+    {
+        switchToMidiMixer();
+    }
+    else if (displayType == displayMode::midiMixer)
+    {
+        switchToMixer();
+    }
+    else
+    {
+        if (isDelayScreen)
+            switchToDelayScreen();
+        else if (isReverbScreen)
+            switchToReverbScreen();
+        else if (isLimiterScreen)
+            switchToLimiterScreen();
+        else if (isEqualizerScreen)
+            switchToEqualizerScreen();
+        else
+            switchToMaster();
     }
 }
 
@@ -1351,6 +1458,10 @@ void cMasterParams::returnToScreen()
     if (displayTypeBeforeMasterPress == displayMode::mixer)
     {
         switchToMixer();
+    }
+    else if (displayTypeBeforeMasterPress == displayMode::midiMixer) // PNEM: MIDI Mixer
+    {
+        switchToMidiMixer();
     }
     else if (displayTypeBeforeMasterPress == displayMode::masterValues)
     {
@@ -2043,6 +2154,7 @@ static void functSoloMuteTrack(uint8_t n, uint8_t state)
                 for (uint8_t i = 0; i < 8; i++)
                 {
                     mtProject.values.trackMute[i] = 0;
+                    mtProject.values.midiTrackMute[i] = 0; // PNEM: MIDI Mixer: solo over 16 tracks
                 }
             }
             else
@@ -2050,6 +2162,7 @@ static void functSoloMuteTrack(uint8_t n, uint8_t state)
                 for (uint8_t i = 0; i < 8; i++)
                 {
                     mtProject.values.trackMute[i] = 1;
+                    mtProject.values.midiTrackMute[i] = 1; // PNEM: MIDI Mixer: solo over 16 tracks
                 }
                 mtProject.values.trackMute[n] = 0;
                 MP->soloTrack = n;
@@ -3472,5 +3585,143 @@ static void functMenu(uint8_t state)
     else if (state == buttonRelease)
     {
         mtMenuPopup.hideModulePopup(MP);
+    }
+}
+
+//==================================================================================================
+// PNEM: MIDI Mixer: MIDI Track Mixer 3/4, tracks 9-16
+
+void cMasterParams::switchToMidiMixer()
+{
+    ip->clearButtonsRange(interfaceButton0, interfaceButton7);
+    ip->clearButton(interfaceButtonRec);
+
+    ip->setButtonObj(interfaceButton0, functSoloMuteMidiTrack);
+    ip->setButtonObj(interfaceButton1, functSoloMuteMidiTrack);
+    ip->setButtonObj(interfaceButton2, functSoloMuteMidiTrack);
+    ip->setButtonObj(interfaceButton3, functSoloMuteMidiTrack);
+    ip->setButtonObj(interfaceButton4, functSoloMuteMidiTrack);
+    ip->setButtonObj(interfaceButton5, functSoloMuteMidiTrack);
+    ip->setButtonObj(interfaceButton6, functSoloMuteMidiTrack);
+    ip->setButtonObj(interfaceButton7, functSoloMuteMidiTrack);
+
+    ip->setButtonObj(interfaceButtonShift, functSoloMuteMidi);
+    ip->setButtonObj(interfaceButtonPlay, buttonPress, functPlayAction);
+
+    keyboardManager.deactivateKeyboard();
+
+    editTrackNameMode = 0;
+    displayType = displayMode::midiMixer;
+
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        midiMeter[i] = 0.0f;
+        midiLevel[i].value = 0;
+        midiLevel[i].lastValue = 0xFF;
+        sequencer.midiMeterPeak[i] = 0;
+    }
+    showMidiMixerScreen();
+}
+
+void cMasterParams::changeMidiTrackLevel(int16_t val, uint8_t n)
+{
+    sequencer.midiTrackLevel[n] = (uint8_t)clamp<int>(sequencer.midiTrackLevel[n] + val, 0, 127);
+    showMidiTrackLevel(n);
+}
+
+void cMasterParams::setDefaultMidiTrackLevel(uint8_t n)
+{
+    sequencer.midiTrackLevel[n] = 127;
+    showMidiTrackLevel(n);
+}
+
+// Every 50 ms on the page: a meter jumps to the loudest note since, then falls: slowly while the
+// track has a note sounding (the scale in about 4 s), fast once it has none (about 0.6 s).
+void cMasterParams::updateMidiMeters()
+{
+    constexpr float kTop = 94.0f; // below CE's red zone: a full velocity isn't clipping
+    for (uint8_t i = 0; i < 8; i++)
+    {
+        const uint8_t peak = sequencer.midiMeterPeak[i];
+        sequencer.midiMeterPeak[i] = 0;
+        const float jump = peak * kTop / 127.0f;
+        if (jump > midiMeter[i])
+        {
+            midiMeter[i] = jump;
+        }
+        else
+        {
+            const bool sounding = sequencer.ptrPlayer->track[kSampleTracks + i].noteOpen;
+            midiMeter[i] -= sounding ? kTop / 80.0f : kTop / 12.0f;
+            if (midiMeter[i] < 0.0f)
+                midiMeter[i] = 0.0f;
+        }
+        midiLevel[i].value = (uint8_t)midiMeter[i];
+        if (midiLevel[i].value != midiLevel[i].lastValue)
+        {
+            showLevelBar(i, &midiLevel[i]);
+            midiLevel[i].lastValue = midiLevel[i].value;
+        }
+    }
+    display.synchronizeRefresh();
+}
+
+// Release: Mute / Unmute; with Shift: Solo (the other 15 tracks muted) / Unsolo (all 16 play).
+// Not after a level change while the button was held.
+static void functSoloMuteMidiTrack(uint8_t n, uint8_t state)
+{
+    if (MP->displayType != cMasterParams::displayMode::midiMixer || n >= 8)
+    {
+        return;
+    }
+
+    if (state == buttonPress)
+    {
+        MP->midiTrackIsEdited[n] = true;
+        return;
+    }
+    if (state != buttonRelease)
+    {
+        return;
+    }
+
+    MP->midiTrackIsEdited[n] = false;
+    if (MP->ignoreMuteReleaseMidi[n])
+    {
+        MP->ignoreMuteReleaseMidi[n] = false;
+        return;
+    }
+
+    if (MP->isSolo)
+    {
+        const bool unsolo = MP->soloTrack == cMasterParams::kMidiSoloBase + n;
+        for (uint8_t i = 0; i < 8; i++)
+        {
+            mtProject.values.trackMute[i] = unsolo ? 0 : 1;
+            mtProject.values.midiTrackMute[i] = unsolo ? 0 : (i != n);
+            engine.muteTrack(i, mtProject.values.trackMute[i]);
+        }
+        MP->soloTrack = unsolo ? -1 : cMasterParams::kMidiSoloBase + n;
+    }
+    else
+    {
+        mtProject.values.midiTrackMute[n] = !mtProject.values.midiTrackMute[n];
+        MP->soloTrack = -1;
+    }
+
+    newFileManager.setProjectStructChanged();
+    MP->showMidiMixerScreen();
+}
+
+static void functSoloMuteMidi(uint8_t state)
+{
+    if (MP->displayType != cMasterParams::displayMode::midiMixer)
+    {
+        return;
+    }
+    if (state == buttonPress || state == buttonRelease)
+    {
+        MP->isSolo = state;
+        MP->showMidiMixerScreen();
     }
 }
