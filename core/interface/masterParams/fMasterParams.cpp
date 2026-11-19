@@ -2270,6 +2270,7 @@ static void functSelectSynth1(uint8_t state)
     else if (state == buttonRelease)
     {
         MP->synthGainIsEdited[0] = false;
+        MP->toggleSynthMute(0); // PNEM: Synth Mute
     }
 }
 
@@ -2287,6 +2288,7 @@ static void functSelectSynth2(uint8_t state)
     else if (state == buttonRelease)
     {
         MP->synthGainIsEdited[1] = false;
+        MP->toggleSynthMute(1); // PNEM: Synth Mute
     }
 }
 
@@ -2304,6 +2306,7 @@ static void functSelectSynth3(uint8_t state)
     else if (state == buttonRelease)
     {
         MP->synthGainIsEdited[2] = false;
+        MP->toggleSynthMute(2); // PNEM: Synth Mute
     }
 }
 #endif
@@ -3070,8 +3073,38 @@ void cMasterParams::changeLineInReverbSend(int16_t val)
 }
 
 #ifdef FEATURE_SYNTH
+// PNEM: Synth Mute. On release: Mute / Unmute; with Shift: Solo (the other two muted) / Unsolo
+// (all three on). Not if the gain changed while the button was held.
+void cMasterParams::toggleSynthMute(int synthIdx)
+{
+    if (ignoreMuteReleaseSynth[synthIdx])
+    {
+        ignoreMuteReleaseSynth[synthIdx] = false;
+        return;
+    }
+
+    if (isSolo)
+    {
+        const bool unsolo = synthSolo == synthIdx;
+        for (int idx = 0; idx < kSynthParts; idx++)
+        {
+            engine.setSynthMuted(idx, unsolo ? false : idx != synthIdx);
+        }
+        synthSolo = unsolo ? -1 : synthIdx;
+    }
+    else
+    {
+        engine.setSynthMuted(synthIdx, !engine.isSynthMuted(synthIdx));
+        synthSolo = -1;
+    }
+
+    showMixerDelayReverbScreen();
+}
+
 void cMasterParams::changeSynthGain(int synthIdx, int16_t val)
 {
+    if (synthGainIsEdited[synthIdx]) // PNEM: Synth Mute: the release changes no mute
+        ignoreMuteReleaseSynth[synthIdx] = true;
     mtProject.values.synthPart[synthIdx].gainDb =
       clamp<float>(mtProject.values.synthPart[synthIdx].gainDb + (val * 0.5),
                    Synth::kGainSilence,
@@ -3089,6 +3122,8 @@ void cMasterParams::changeSynthGain(int synthIdx, int16_t val)
 
 void cMasterParams::setDefaultSynthGain(int synthIdx)
 {
+    if (synthGainIsEdited[synthIdx]) // PNEM: Synth Mute: the release changes no mute
+        ignoreMuteReleaseSynth[synthIdx] = true;
     mtProject.values.synthPart[synthIdx].gainDb =
       clamp<float>(Synth::kGainDefault, Synth::kGainSilence, Synth::kGainMax);
 

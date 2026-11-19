@@ -158,6 +158,38 @@ AUDIO_CORE_RAM void PolySynth::update(void)
           mtFx, partIdx, tempBufSendsCommonLeft.data(), tempBufSendsCommonRight.data(), mtEngineStereo);
 #endif
 
+        // PNEM: Synth Mute
+        // Apply after Synth FX so both the synth and its effect output are muted.
+        // The synth continues rendering while muted.
+        {
+            const float target = muted[partIdx] ? 0.0f : 1.0f;
+            const float from = muteGain[partIdx];
+
+            if (from != target || target == 0.0f)
+            {
+                float* buffers[4] = {
+                    tempBufSendsCommonLeft.data(),
+                    nullptr,
+                    nullptr,
+                    nullptr
+                };
+
+                int count = 1;
+
+                if (isStereo)
+                    buffers[count++] = tempBufSendsCommonRight.data();
+
+                if (hasSends)
+                {
+                    buffers[count++] = tempBufSend[0].data();
+                    buffers[count++] = tempBufSend[1].data();
+                }
+
+                applyMute(buffers, count, from, target);
+                muteGain[partIdx] = target;
+            }
+        }
+
         bool budgetExceeded =
           (timer != nullptr && (timer->clockCycles() - startCycles) > maxCycles);
         if (budgetExceeded)
@@ -308,6 +340,38 @@ AUDIO_CORE_FLASH void PolySynth::setGain(int idx, float gainDB)
 {
     assert(idx < kSynthParts);
     PolySynth::gainDB[idx] = gainDB;
+}
+
+// PNEM: Synth Mute
+AUDIO_CORE_RAM void PolySynth::applyMute(
+    float* const* buffers, int count, float from, float target)
+{
+    const float step = (target - from) / polysynth::kAudioBufferSize;
+
+    for (int i = 0; i < polysynth::kAudioBufferSize; i++)
+    {
+        const float g =
+            (i + 1 == polysynth::kAudioBufferSize)
+                ? target
+                : from + step * (i + 1);
+
+        for (int b = 0; b < count; b++)
+        {
+            buffers[b][i] *= g;
+        }
+    }
+}
+
+// PNEM: Synth Mute
+void PolySynth::setMuted(int idx, bool isMuted)
+{
+    if (idx >= 0 && idx < kSynthParts)
+        muted[idx] = isMuted;
+}
+
+bool PolySynth::isMuted(int idx) const
+{
+    return idx >= 0 && idx < kSynthParts && muted[idx];
 }
 
 #endif
